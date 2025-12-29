@@ -1,5 +1,5 @@
 import Image from "next/image";
-import RegistrationForm from "@/components/RegistrationForm";
+import MultiStepRegistration from "@/components/MultiStepRegistration";
 import SpotsBadge from "@/components/SpotsBadge";
 
 const SPEAKERS = [
@@ -211,8 +211,8 @@ export default function Home() {
               Seating limited to 200 attendees
             </p>
           </div>
-          <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm">
-            <RegistrationForm />
+          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm">
+            <MultiStepRegistration />
           </div>
         </div>
       </section>
