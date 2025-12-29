@@ -54,17 +54,17 @@ export const PRICING: PricingConfig = {
   conference: {
     earlyBird: {
       label: "Early Bird",
-      amount: 15000, // $150.00 - UPDATE WITH ACTUAL PRICE
+      amount: 18400, // $184.00
       deadline: new Date("2026-02-01T00:00:00"), // Early bird ends Feb 1
     },
     regular: {
       label: "Regular",
-      amount: 20000, // $200.00 - UPDATE WITH ACTUAL PRICE
+      amount: 21000, // $210.00
       deadline: new Date("2026-05-24T00:00:00"), // Regular ends May 24
     },
     late: {
       label: "Late Registration",
-      amount: 25000, // $250.00 - UPDATE WITH ACTUAL PRICE
+      amount: 24000, // $240.00
       deadline: new Date("2026-07-09T00:00:00"), // Conference starts July 9
     },
   },
