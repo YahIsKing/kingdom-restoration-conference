@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { sendConfirmationEmail } from "@/lib/email";
 import { formatPrice } from "@/lib/pricing";
+import { decrementSpots } from "@/lib/spots";
 import Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -44,17 +45,24 @@ export async function POST(request: NextRequest) {
     const customerName = session.metadata?.customerName || "Attendee";
     const registrationType = (session.metadata?.registrationType || "conference") as
       | "conference"
-      | "vendor";
+      | "vendor-full"
+      | "vendor-half";
     const amountPaid = session.amount_total
       ? formatPrice(session.amount_total)
       : "N/A";
+
+    // Decrement available spots for conference registrations (not vendors)
+    if (registrationType === "conference") {
+      const remaining = await decrementSpots();
+      console.log(`Spots remaining: ${remaining}`);
+    }
 
     if (customerEmail) {
       try {
         await sendConfirmationEmail({
           to: customerEmail,
           name: customerName,
-          registrationType,
+          registrationType: registrationType.startsWith("vendor") ? "vendor" : "conference",
           amount: amountPaid,
         });
         console.log(`Confirmation email sent to ${customerEmail}`);

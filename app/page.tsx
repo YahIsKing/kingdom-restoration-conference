@@ -1,5 +1,6 @@
 import Image from "next/image";
 import RegistrationForm from "@/components/RegistrationForm";
+import SpotsBadge from "@/components/SpotsBadge";
 
 const SPEAKERS = [
   { name: "Abrie Kilian", role: "Keynote Speaker", image: null },
@@ -62,9 +63,12 @@ export default function Home() {
         <p className="mt-2 text-beige/70 text-lg">
           Knoxville, Tennessee
         </p>
+        <div className="mt-6">
+          <SpotsBadge />
+        </div>
         <a
           href="#register"
-          className="mt-10 bg-olive hover:bg-olive-light text-white px-10 py-4 rounded-full text-lg font-semibold transition-all hover:shadow-lg"
+          className="mt-8 bg-olive hover:bg-olive-light text-white px-10 py-4 rounded-full text-lg font-semibold transition-all hover:shadow-lg"
         >
           Register Now
         </a>
