@@ -57,3 +57,22 @@ export const set = mutation({
     return args.value;
   },
 });
+
+export const init = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const config = await ctx.db
+      .query("config")
+      .withIndex("by_key", (q) => q.eq("key", "spots_remaining"))
+      .unique();
+
+    if (!config) {
+      await ctx.db.insert("config", {
+        key: "spots_remaining",
+        value: TOTAL_SPOTS,
+      });
+      return { initialized: true, spots: TOTAL_SPOTS };
+    }
+    return { initialized: false, spots: config.value };
+  },
+});

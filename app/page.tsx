@@ -12,6 +12,7 @@ const SPEAKERS = [
 const SCHEDULE = [
   {
     day: "Thursday",
+    hebrewDay: "Yom Chamishi",
     date: "July 9",
     events: [
       { time: "5:00 PM", title: "Welcome & Social Networking" },
@@ -20,6 +21,7 @@ const SCHEDULE = [
   },
   {
     day: "Friday",
+    hebrewDay: "Yom Shishi",
     date: "July 10",
     events: [
       { time: "9:00 AM", title: "Worship & Prayer" },
@@ -30,6 +32,7 @@ const SCHEDULE = [
   },
   {
     day: "Shabbat",
+    hebrewDay: "Yom HaShabbat",
     date: "July 11",
     events: [
       { time: "9:00 AM", title: "Prayer, Worship & Torah Study" },
@@ -39,6 +42,7 @@ const SCHEDULE = [
   },
   {
     day: "Sunday",
+    hebrewDay: "Yom Rishon",
     date: "July 12",
     events: [{ time: "9:00 AM", title: "Closing Session" }],
   },
@@ -48,7 +52,7 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero */}
-      <section className="bg-royal min-h-[80vh] flex flex-col items-center justify-center px-6 py-16">
+      <section className="bg-royal min-h-[60vh] flex flex-col items-center justify-center px-6 py-20">
         <Image
           src="/Kingdom Restoration Logo-04.svg"
           alt="Kingdom Restoration Conference"
@@ -57,21 +61,29 @@ export default function Home() {
           className="w-full max-w-sm sm:max-w-md lg:max-w-lg"
           priority
         />
-        <p className="mt-8 text-beige text-2xl sm:text-3xl font-heading tracking-wide">
-          July 9-12, 2026
-        </p>
-        <p className="mt-2 text-beige/70 text-lg">
-          Knoxville, Tennessee
-        </p>
-        <div className="mt-6">
-          <SpotsBadge />
+      </section>
+
+      {/* Event Details Bar */}
+      <section className="bg-beige py-12 px-6">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="text-center sm:text-left">
+            <p className="text-2xl sm:text-3xl font-heading text-royal tracking-wide">
+              July 9-12, 2026
+            </p>
+            <p className="mt-1 text-royal/70">
+              Hilton Knoxville Airport &bull; Alcoa, TN
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <SpotsBadge />
+            <a
+              href="#register"
+              className="bg-royal hover:bg-royal-light text-beige px-8 py-3 rounded-full font-semibold transition-all hover:shadow-lg"
+            >
+              Register Now
+            </a>
+          </div>
         </div>
-        <a
-          href="#register"
-          className="mt-8 bg-olive hover:bg-olive-light text-white px-10 py-4 rounded-full text-lg font-semibold transition-all hover:shadow-lg"
-        >
-          Register Now
-        </a>
       </section>
 
       {/* About */}
@@ -148,7 +160,8 @@ export default function Home() {
               <div key={day.day}>
                 <div className="mb-4">
                   <h3 className="font-heading text-xl text-royal">{day.day}</h3>
-                  <p className="text-olive text-sm">{day.date}</p>
+                  <p className="text-olive/60 text-xs italic">{day.hebrewDay}</p>
+                  <p className="text-olive text-sm mt-1">{day.date}</p>
                 </div>
                 <div className="space-y-4">
                   {day.events.map((event, index) => (
