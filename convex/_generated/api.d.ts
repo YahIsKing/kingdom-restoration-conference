@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as registrations from "../registrations.js";
 import type * as spots from "../spots.js";
 
 import type {
@@ -18,7 +17,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  registrations: typeof registrations;
   spots: typeof spots;
 }>;
 

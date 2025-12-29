@@ -1,18 +1,44 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useState, useEffect } from "react";
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "KRC2026Admin";
+
+interface Registration {
+  id: string;
+  created: number;
+  firstName: string;
+  familyName: string;
+  email: string;
+  phone: string;
+  state: string;
+  registrationType: string;
+  tshirts: string;
+  dietaryPreference: string;
+  allergies: string;
+  addOns: string;
+  amountPaid: number;
+  paymentStatus: string;
+}
+
+interface Stats {
+  totalRegistrations: number;
+  conferenceCount: number;
+  vendorCount: number;
+  dietary: Record<string, number>;
+  tshirtSizes: Record<string, number>;
+  tshirtColors: Record<string, number>;
+  addOnTotals: Record<string, number>;
+}
 
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
-  const registrations = useQuery(api.registrations.list);
-  const stats = useQuery(api.registrations.getStats);
+  const [loading, setLoading] = useState(false);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,14 +50,38 @@ export default function AdminPage() {
     }
   };
 
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/registrations", {
+        headers: { "x-admin-password": password },
+      });
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setRegistrations(data.registrations);
+      setStats(data.stats);
+    } catch (err) {
+      setError("Failed to load registrations");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (authenticated) {
+      fetchData();
+    }
+  }, [authenticated]);
+
+  const formatPrice = (cents: number) => {
+    return `$${(cents / 100).toFixed(2)}`;
+  };
+
   const formatTshirts = (tshirtsJson: string) => {
     try {
       const tshirts = JSON.parse(tshirtsJson || "[]");
-      return tshirts
-        .map((t: { size: string; color: string }, i: number) => `${t.size} ${t.color}`)
-        .join(", ");
+      return tshirts.map((t: { size: string; color: string }) => `${t.size} ${t.color}`);
     } catch {
-      return tshirtsJson;
+      return [];
     }
   };
 
@@ -43,14 +93,14 @@ export default function AdminPage() {
       if (addOns["dinner-child"]) items.push(`Child Dinner x${addOns["dinner-child"]}`);
       if (addOns["lunch"]) items.push(`Lunch x${addOns["lunch"]}`);
       if (addOns["tshirt"]) items.push(`Extra Shirt x${addOns["tshirt"]}`);
-      return items.length > 0 ? items.join(", ") : "None";
+      return items;
     } catch {
-      return addOnsJson;
+      return [];
     }
   };
 
   const exportCSV = () => {
-    if (!registrations) return;
+    if (!registrations.length) return;
 
     const headers = [
       "Date",
@@ -65,21 +115,23 @@ export default function AdminPage() {
       "Allergies",
       "Add-Ons",
       "Amount",
+      "Status",
     ];
 
     const rows = registrations.map((r) => [
-      new Date(r.createdAt).toLocaleDateString(),
+      new Date(r.created).toLocaleDateString(),
       r.firstName,
       r.familyName,
       r.email,
       r.phone,
       r.state,
       r.registrationType,
-      formatTshirts(r.tshirts),
+      formatTshirts(r.tshirts).join("; "),
       r.dietaryPreference,
       r.allergies || "None",
-      formatAddOns(r.addOns),
-      r.amountPaid,
+      formatAddOns(r.addOns).join("; ") || "None",
+      formatPrice(r.amountPaid),
+      r.paymentStatus,
     ]);
 
     const csvContent = [
@@ -128,148 +180,254 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-beige-light">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="font-heading text-3xl text-royal">Registrations</h1>
-          <button
-            onClick={exportCSV}
-            className="bg-olive text-white px-6 py-2 rounded-lg font-semibold hover:bg-olive/90"
-          >
-            Export CSV
-          </button>
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="font-heading text-2xl sm:text-3xl text-royal">Registrations</h1>
+            <p className="text-royal/60 text-sm mt-1">
+              {stats?.totalRegistrations || 0} total
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="bg-beige-dark text-royal px-4 py-2 rounded-lg font-medium hover:bg-beige-dark/80 text-sm"
+            >
+              {loading ? "..." : "Refresh"}
+            </button>
+            <button
+              onClick={exportCSV}
+              className="bg-olive text-white px-4 py-2 rounded-lg font-medium hover:bg-olive/90 text-sm"
+            >
+              CSV
+            </button>
+          </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Grid */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {/* Registration Counts */}
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-royal/60 text-sm">Total Registrations</p>
-              <p className="text-3xl font-bold text-royal">{stats.totalRegistrations}</p>
+              <p className="text-royal/60 text-xs uppercase tracking-wide">Registrations</p>
+              <p className="text-2xl font-bold text-royal mt-1">{stats.conferenceCount}</p>
+              {stats.vendorCount > 0 && (
+                <p className="text-xs text-royal/60 mt-1">+ {stats.vendorCount} vendors</p>
+              )}
             </div>
 
+            {/* Dietary */}
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-royal/60 text-sm mb-2">Dietary</p>
-              <div className="text-sm space-y-1">
+              <p className="text-royal/60 text-xs uppercase tracking-wide mb-2">Dietary</p>
+              <div className="space-y-1">
                 {Object.entries(stats.dietary).map(([key, val]) => (
-                  <div key={key} className="flex justify-between">
-                    <span className="capitalize">{key}</span>
-                    <span className="font-semibold">{val}</span>
+                  <div key={key} className="flex justify-between text-sm">
+                    <span className="capitalize text-royal/80">{key}</span>
+                    <span className="font-semibold text-royal">{val}</span>
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* T-Shirt Sizes */}
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-royal/60 text-sm mb-2">T-Shirt Sizes</p>
-              <div className="text-sm space-y-1">
-                {Object.entries(stats.tshirtSizes).map(([key, val]) => (
-                  <div key={key} className="flex justify-between">
-                    <span>{key}</span>
-                    <span className="font-semibold">{val}</span>
-                  </div>
+              <p className="text-royal/60 text-xs uppercase tracking-wide mb-2">Shirt Sizes</p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(stats.tshirtSizes).map(([size, count]) => (
+                  <span key={size} className="bg-beige-dark/50 px-2 py-1 rounded text-xs font-medium">
+                    {size}: {count}
+                  </span>
                 ))}
               </div>
             </div>
 
+            {/* T-Shirt Colors */}
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <p className="text-royal/60 text-sm mb-2">T-Shirt Colors</p>
-              <div className="text-sm space-y-1">
-                {Object.entries(stats.tshirtColors).map(([key, val]) => (
-                  <div key={key} className="flex justify-between">
-                    <span className="capitalize">{key}</span>
-                    <span className="font-semibold">{val}</span>
-                  </div>
+              <p className="text-royal/60 text-xs uppercase tracking-wide mb-2">Shirt Colors</p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(stats.tshirtColors).map(([color, count]) => (
+                  <span key={color} className="bg-beige-dark/50 px-2 py-1 rounded text-xs font-medium capitalize">
+                    {color}: {count}
+                  </span>
                 ))}
               </div>
             </div>
+
+            {/* Add-ons */}
+            {Object.keys(stats.addOnTotals).length > 0 && (
+              <div className="bg-white rounded-xl p-4 shadow-sm col-span-2">
+                <p className="text-royal/60 text-xs uppercase tracking-wide mb-2">Add-Ons</p>
+                <div className="flex flex-wrap gap-3">
+                  {stats.addOnTotals["dinner-adult"] && (
+                    <span className="text-sm">
+                      <span className="text-royal/70">Adult Dinners:</span>{" "}
+                      <span className="font-semibold">{stats.addOnTotals["dinner-adult"]}</span>
+                    </span>
+                  )}
+                  {stats.addOnTotals["dinner-child"] && (
+                    <span className="text-sm">
+                      <span className="text-royal/70">Child Dinners:</span>{" "}
+                      <span className="font-semibold">{stats.addOnTotals["dinner-child"]}</span>
+                    </span>
+                  )}
+                  {stats.addOnTotals["lunch"] && (
+                    <span className="text-sm">
+                      <span className="text-royal/70">Lunches:</span>{" "}
+                      <span className="font-semibold">{stats.addOnTotals["lunch"]}</span>
+                    </span>
+                  )}
+                  {stats.addOnTotals["tshirt"] && (
+                    <span className="text-sm">
+                      <span className="text-royal/70">Extra Shirts:</span>{" "}
+                      <span className="font-semibold">{stats.addOnTotals["tshirt"]}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Add-on Totals */}
-        {stats && Object.keys(stats.addOnTotals).length > 0 && (
-          <div className="bg-white rounded-xl p-4 shadow-sm mb-8">
-            <p className="text-royal/60 text-sm mb-2">Add-On Totals</p>
-            <div className="flex flex-wrap gap-4">
-              {stats.addOnTotals["dinner-adult"] && (
-                <div className="text-sm">
-                  <span className="text-royal/70">Adult Dinners:</span>{" "}
-                  <span className="font-semibold">{stats.addOnTotals["dinner-adult"]}</span>
-                </div>
-              )}
-              {stats.addOnTotals["dinner-child"] && (
-                <div className="text-sm">
-                  <span className="text-royal/70">Child Dinners:</span>{" "}
-                  <span className="font-semibold">{stats.addOnTotals["dinner-child"]}</span>
-                </div>
-              )}
-              {stats.addOnTotals["lunch"] && (
-                <div className="text-sm">
-                  <span className="text-royal/70">Extra Lunches:</span>{" "}
-                  <span className="font-semibold">{stats.addOnTotals["lunch"]}</span>
-                </div>
-              )}
-              {stats.addOnTotals["tshirt"] && (
-                <div className="text-sm">
-                  <span className="text-royal/70">Extra T-Shirts:</span>{" "}
-                  <span className="font-semibold">{stats.addOnTotals["tshirt"]}</span>
-                </div>
-              )}
+        {/* Registration Cards */}
+        <div className="space-y-3">
+          {loading ? (
+            <div className="bg-white rounded-xl p-8 text-center text-royal/60">
+              Loading...
             </div>
-          </div>
-        )}
+          ) : registrations.length === 0 ? (
+            <div className="bg-white rounded-xl p-8 text-center text-royal/60">
+              No registrations yet
+            </div>
+          ) : (
+            registrations.map((reg) => {
+              const isExpanded = expandedId === reg.id;
+              const tshirts = formatTshirts(reg.tshirts);
+              const addOns = formatAddOns(reg.addOns);
 
-        {/* Registrations Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-royal text-beige">
-                <tr>
-                  <th className="px-4 py-3 text-left">Date</th>
-                  <th className="px-4 py-3 text-left">Name</th>
-                  <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Phone</th>
-                  <th className="px-4 py-3 text-left">State</th>
-                  <th className="px-4 py-3 text-left">T-Shirts</th>
-                  <th className="px-4 py-3 text-left">Dietary</th>
-                  <th className="px-4 py-3 text-left">Add-Ons</th>
-                  <th className="px-4 py-3 text-left">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-beige-dark">
-                {registrations === undefined ? (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-royal/60">
-                      Loading...
-                    </td>
-                  </tr>
-                ) : registrations.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-royal/60">
-                      No registrations yet
-                    </td>
-                  </tr>
-                ) : (
-                  registrations.map((reg) => (
-                    <tr key={reg._id} className="hover:bg-beige-light/50">
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {new Date(reg.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap font-medium">
-                        {reg.firstName} {reg.familyName}
-                      </td>
-                      <td className="px-4 py-3">{reg.email}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{reg.phone}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{reg.state}</td>
-                      <td className="px-4 py-3">{formatTshirts(reg.tshirts)}</td>
-                      <td className="px-4 py-3 capitalize">{reg.dietaryPreference}</td>
-                      <td className="px-4 py-3">{formatAddOns(reg.addOns)}</td>
-                      <td className="px-4 py-3 font-semibold text-olive">{reg.amountPaid}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+              return (
+                <div
+                  key={reg.id}
+                  className="bg-white rounded-xl shadow-sm overflow-hidden"
+                >
+                  {/* Card Header - Always Visible */}
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : reg.id)}
+                    className="w-full p-4 text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-royal truncate">
+                            {reg.firstName} {reg.familyName}
+                          </h3>
+                          {reg.paymentStatus === "partial_refund" && (
+                            <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded">
+                              Partial Refund
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-royal/60 truncate">{reg.email}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-semibold text-olive">{formatPrice(reg.amountPaid)}</p>
+                        <p className="text-xs text-royal/50">
+                          {new Date(reg.created).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Info Row */}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <span className="bg-beige-dark/50 px-2 py-0.5 rounded text-xs capitalize">
+                        {reg.dietaryPreference || "No pref"}
+                      </span>
+                      {tshirts.length > 0 && (
+                        <span className="bg-beige-dark/50 px-2 py-0.5 rounded text-xs">
+                          {tshirts.length} shirt{tshirts.length > 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {addOns.length > 0 && (
+                        <span className="bg-olive/10 text-olive px-2 py-0.5 rounded text-xs">
+                          +{addOns.length} add-on{addOns.length > 1 ? "s" : ""}
+                        </span>
+                      )}
+                      <span className="ml-auto text-royal/40 text-xs">
+                        {isExpanded ? "▲" : "▼"}
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Expanded Details */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 pt-0 border-t border-beige-dark/30">
+                      <div className="grid grid-cols-2 gap-4 pt-4 text-sm">
+                        <div>
+                          <p className="text-royal/50 text-xs uppercase">Phone</p>
+                          <p className="text-royal">{reg.phone || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-royal/50 text-xs uppercase">State</p>
+                          <p className="text-royal">{reg.state || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-royal/50 text-xs uppercase">Type</p>
+                          <p className="text-royal capitalize">{reg.registrationType}</p>
+                        </div>
+                        <div>
+                          <p className="text-royal/50 text-xs uppercase">Allergies</p>
+                          <p className="text-royal">{reg.allergies || "None"}</p>
+                        </div>
+                      </div>
+
+                      {tshirts.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-royal/50 text-xs uppercase mb-1">T-Shirts</p>
+                          <div className="flex flex-wrap gap-2">
+                            {tshirts.map((t: string, i: number) => (
+                              <span key={i} className="bg-beige-dark/50 px-2 py-1 rounded text-sm">
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {addOns.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-royal/50 text-xs uppercase mb-1">Add-Ons</p>
+                          <div className="flex flex-wrap gap-2">
+                            {addOns.map((a: string, i: number) => (
+                              <span key={i} className="bg-olive/10 text-olive px-2 py-1 rounded text-sm">
+                                {a}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Contact Actions */}
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-beige-dark/30">
+                        <a
+                          href={`mailto:${reg.email}`}
+                          className="flex-1 bg-beige-dark/50 text-royal text-center py-2 rounded-lg text-sm font-medium hover:bg-beige-dark"
+                        >
+                          Email
+                        </a>
+                        <a
+                          href={`tel:${reg.phone}`}
+                          className="flex-1 bg-beige-dark/50 text-royal text-center py-2 rounded-lg text-sm font-medium hover:bg-beige-dark"
+                        >
+                          Call
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

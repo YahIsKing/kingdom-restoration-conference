@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { sendConfirmationEmail } from "@/lib/email";
 import { formatPrice } from "@/lib/pricing";
-import { decrementSpots, saveRegistration } from "@/lib/spots";
+import { decrementSpots } from "@/lib/spots";
 import Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -51,42 +51,10 @@ export async function POST(request: NextRequest) {
       ? formatPrice(session.amount_total)
       : "N/A";
 
-    // Extract additional metadata
-    const firstName = session.metadata?.firstName || "";
-    const familyName = session.metadata?.familyName || "";
-    const phone = session.metadata?.phone || "";
-    const state = session.metadata?.state || "";
-    const tshirts = session.metadata?.tshirts || "[]";
-    const dietaryPreference = session.metadata?.dietaryPreference || "";
-    const allergies = session.metadata?.allergies || "";
-    const addOns = session.metadata?.addOns || "{}";
-
     // Decrement available spots for conference registrations (not vendors)
     if (registrationType === "conference") {
       const remaining = await decrementSpots();
       console.log(`Spots remaining: ${remaining}`);
-    }
-
-    // Save registration to Convex
-    try {
-      await saveRegistration({
-        firstName,
-        familyName,
-        email: customerEmail,
-        phone,
-        state,
-        registrationType,
-        tshirts,
-        dietaryPreference,
-        allergies,
-        addOns,
-        amountPaid,
-        stripeSessionId: session.id,
-      });
-      console.log(`Registration saved to Convex for ${customerEmail}`);
-    } catch (saveError) {
-      console.error("Failed to save registration:", saveError);
-      // Don't fail the webhook - the payment was successful
     }
 
     // Send confirmation email
