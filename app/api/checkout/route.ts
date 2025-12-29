@@ -5,6 +5,8 @@ import {
   getCurrentConferencePrice,
   getVendorFullPrice,
   getVendorHalfPrice,
+  isEarlyAccessPeriod,
+  validateAccessCode,
 } from "@/lib/pricing";
 
 function getPriceData(registrationType: RegistrationType) {
@@ -35,10 +37,11 @@ function getPriceData(registrationType: RegistrationType) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, registrationType } = body as {
+    const { name, email, registrationType, accessCode } = body as {
       name: string;
       email: string;
       registrationType: RegistrationType;
+      accessCode?: string;
     };
 
     if (!name || !email || !registrationType) {
@@ -52,6 +55,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invalid registration type" },
         { status: 400 }
+      );
+    }
+
+    // Validate access code during early access period
+    if (isEarlyAccessPeriod() && !validateAccessCode(accessCode || "")) {
+      return NextResponse.json(
+        { error: "Invalid access code. Registration is currently limited to members only." },
+        { status: 403 }
       );
     }
 

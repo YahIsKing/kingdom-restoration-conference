@@ -2,6 +2,21 @@
 
 export type RegistrationType = "conference" | "vendor-full" | "vendor-half";
 
+// Early access codes for members-only period (before public early bird)
+const EARLY_ACCESS_CODES = ["PwP2026!", "MAXPOTENTIA26!"];
+
+// Public registration opens Jan 18, 2026
+// Before this date, an access code is required
+const PUBLIC_REGISTRATION_DATE = new Date("2026-01-18T00:00:00");
+
+export function isEarlyAccessPeriod(): boolean {
+  return new Date() < PUBLIC_REGISTRATION_DATE;
+}
+
+export function validateAccessCode(code: string): boolean {
+  return EARLY_ACCESS_CODES.includes(code);
+}
+
 interface PricingWindow {
   label: string;
   amount: number; // in cents (e.g., 15000 = $150.00)

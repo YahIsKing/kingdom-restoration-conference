@@ -6,6 +6,8 @@ import {
   getVendorFullPrice,
   getVendorHalfPrice,
   formatPrice,
+  isEarlyAccessPeriod,
+  validateAccessCode,
   RegistrationType,
 } from "@/lib/pricing";
 
@@ -14,8 +16,11 @@ export default function RegistrationForm() {
   const [email, setEmail] = useState("");
   const [registrationType, setRegistrationType] =
     useState<RegistrationType>("conference");
+  const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const earlyAccessRequired = isEarlyAccessPeriod();
 
   const conferencePrice = getCurrentConferencePrice();
   const vendorFullPrice = getVendorFullPrice();
@@ -26,11 +31,18 @@ export default function RegistrationForm() {
     setLoading(true);
     setError("");
 
+    // Validate access code during early access period
+    if (earlyAccessRequired && !validateAccessCode(accessCode)) {
+      setError("Invalid access code. Registration is currently limited to members only.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, registrationType }),
+        body: JSON.stringify({ name, email, registrationType, accessCode }),
       });
 
       const data = await response.json();
@@ -207,11 +219,34 @@ export default function RegistrationForm() {
         />
       </div>
 
-      {/* Member Discount Note */}
-      <p className="text-sm text-royal/70">
-        Have a member discount code? You can enter it on the next page during
-        checkout.
-      </p>
+      {/* Early Access Code Field - only shown during members-only period */}
+      {earlyAccessRequired && (
+        <div>
+          <label htmlFor="accessCode" className="block text-sm font-medium text-royal">
+            Early Access Code <span className="text-olive">(Required)</span>
+          </label>
+          <input
+            type="text"
+            id="accessCode"
+            required
+            value={accessCode}
+            onChange={(e) => setAccessCode(e.target.value)}
+            className="mt-2 block w-full rounded-lg border-2 border-beige-dark bg-white px-4 py-3 text-royal placeholder-royal/40 transition-colors focus:border-olive focus:outline-none"
+            placeholder="Enter your access code"
+          />
+          <p className="mt-2 text-sm text-royal/70">
+            Registration is currently open to members only. Public registration opens January 18, 2026.
+          </p>
+        </div>
+      )}
+
+      {/* Member Discount Note - only shown during public registration */}
+      {!earlyAccessRequired && (
+        <p className="text-sm text-royal/70">
+          Have a member discount code? You can enter it on the next page during
+          checkout.
+        </p>
+      )}
 
       {/* Error Message */}
       {error && (
