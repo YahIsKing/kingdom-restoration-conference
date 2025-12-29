@@ -1,6 +1,7 @@
 import Image from "next/image";
 import MultiStepRegistration from "@/components/MultiStepRegistration";
 import SpotsBadge from "@/components/SpotsBadge";
+import PricingTimeline from "@/components/PricingTimeline";
 
 const SPEAKERS = [
   { name: "Abrie Kilian", role: "Keynote Speaker", image: null },
@@ -201,9 +202,9 @@ export default function Home() {
       </section>
 
       {/* Registration */}
-      <section id="register" className="py-20 sm:py-28 px-6">
+      <section id="register" className="py-16 sm:py-28 px-4 sm:px-6">
         <div className="max-w-xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8 sm:mb-12">
             <h2 className="font-heading text-3xl sm:text-4xl text-royal mb-4">
               Register
             </h2>
@@ -211,7 +212,14 @@ export default function Home() {
               Seating limited to 200 attendees
             </p>
           </div>
-          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm">
+
+          {/* Pricing Timeline - Above Form */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm mb-6">
+            <PricingTimeline />
+          </div>
+
+          {/* Registration Form */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-sm">
             <MultiStepRegistration />
           </div>
         </div>

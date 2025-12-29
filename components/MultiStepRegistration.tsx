@@ -14,18 +14,11 @@ import {
   T_SHIRT_COLORS,
   DIETARY_OPTIONS,
   calculateTotal,
-  getTShirtCount,
   type RegistrationData,
   type TShirtSelection,
 } from "@/lib/products";
-import PricingTimeline from "./PricingTimeline";
 
-const STEPS = [
-  { id: 1, name: "Contact" },
-  { id: 2, name: "Add-ons" },
-  { id: 3, name: "T-Shirts" },
-  { id: 4, name: "Dietary" },
-];
+const STEPS = ["Contact", "Registration", "Dietary"];
 
 export default function MultiStepRegistration() {
   const [step, setStep] = useState(1);
@@ -42,38 +35,31 @@ export default function MultiStepRegistration() {
     phone: "",
     state: "",
     addOns: {},
-    tshirts: [{ size: "L", color: "royal" }], // Default included t-shirt
+    tshirts: [{ size: "L", color: "royal" }],
     dietaryPreference: "poultry",
     allergies: "",
     accessCode: "",
   });
 
-  const tshirtCount = getTShirtCount(formData.addOns);
   const total = calculateTotal(conferencePrice.amount, formData.addOns);
-
-  // Update t-shirts array when quantity changes
-  const updateTShirts = (count: number) => {
-    const newTshirts: TShirtSelection[] = [];
-    for (let i = 0; i < count; i++) {
-      newTshirts.push(
-        formData.tshirts[i] || { size: "L", color: "royal" }
-      );
-    }
-    setFormData({ ...formData, tshirts: newTshirts });
-  };
 
   const updateAddOn = (id: string, delta: number) => {
     const current = formData.addOns[id] || 0;
     const addon = ADD_ONS.find((a) => a.id === id);
     const max = addon?.maxQuantity || 10;
     const newQty = Math.max(0, Math.min(max, current + delta));
-
     const newAddOns = { ...formData.addOns, [id]: newQty };
-    setFormData({ ...formData, addOns: newAddOns });
 
-    // Update t-shirts array if t-shirt quantity changed
+    // For t-shirts, update both addOns and tshirts array in one setState to avoid race condition
     if (id === "tshirt") {
-      updateTShirts(1 + newQty);
+      const newCount = 1 + newQty;
+      const newTshirts: TShirtSelection[] = [];
+      for (let i = 0; i < newCount; i++) {
+        newTshirts.push(formData.tshirts[i] || { size: "L", color: "royal" });
+      }
+      setFormData({ ...formData, addOns: newAddOns, tshirts: newTshirts });
+    } else {
+      setFormData({ ...formData, addOns: newAddOns });
     }
   };
 
@@ -95,10 +81,8 @@ export default function MultiStepRegistration() {
           (!earlyAccessRequired || formData.accessCode)
         );
       case 2:
-        return true; // Add-ons are optional
-      case 3:
         return formData.tshirts.every((t) => t.size && t.color);
-      case 4:
+      case 3:
         return formData.dietaryPreference;
       default:
         return false;
@@ -123,7 +107,6 @@ export default function MultiStepRegistration() {
     setLoading(true);
     setError("");
 
-    // Validate access code during early access period
     if (earlyAccessRequired && !validateAccessCode(formData.accessCode || "")) {
       setError("Invalid access code.");
       setLoading(false);
@@ -134,21 +117,12 @@ export default function MultiStepRegistration() {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          registrationType: "conference",
-        }),
+        body: JSON.stringify({ ...formData, registrationType: "conference" }),
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to create checkout session");
-      }
-
-      if (data.url) {
-        window.location.href = data.url;
-      }
+      if (!response.ok) throw new Error(data.error || "Failed to create checkout session");
+      if (data.url) window.location.href = data.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setLoading(false);
@@ -156,132 +130,90 @@ export default function MultiStepRegistration() {
   };
 
   return (
-    <div>
-      {/* Progress Steps */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          {STEPS.map((s, idx) => (
-            <div key={s.id} className="flex items-center">
-              <div
-                className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors ${
-                  step >= s.id
+    <div className="w-full">
+      {/* Step Indicator - Mobile Friendly */}
+      <div className="flex items-center justify-center gap-2 mb-6">
+        {STEPS.map((name, idx) => (
+          <div key={name} className="flex items-center">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                step > idx + 1
+                  ? "bg-olive text-white"
+                  : step === idx + 1
                     ? "bg-olive text-white"
                     : "bg-beige-dark text-royal/50"
-                }`}
-              >
-                {step > s.id ? (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                ) : (
-                  s.id
-                )}
-              </div>
-              <span
-                className={`ml-2 text-sm hidden sm:inline ${
-                  step >= s.id ? "text-royal font-medium" : "text-royal/50"
-                }`}
-              >
-                {s.name}
-              </span>
-              {idx < STEPS.length - 1 && (
-                <div
-                  className={`w-8 sm:w-16 h-0.5 mx-2 ${
-                    step > s.id ? "bg-olive" : "bg-beige-dark"
-                  }`}
-                />
-              )}
+              }`}
+            >
+              {step > idx + 1 ? "✓" : idx + 1}
             </div>
-          ))}
-        </div>
+            {idx < STEPS.length - 1 && (
+              <div className={`w-8 h-0.5 ${step > idx + 1 ? "bg-olive" : "bg-beige-dark"}`} />
+            )}
+          </div>
+        ))}
       </div>
+      <p className="text-center text-sm text-royal/60 mb-6">
+        Step {step} of {STEPS.length}: {STEPS[step - 1]}
+      </p>
 
-      {/* Step 1: Contact Info */}
+      {/* Step 1: Contact */}
       {step === 1 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-royal mb-4">Contact Information</h3>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-royal mb-1">
-                First Name
-              </label>
+              <label className="block text-sm font-medium text-royal mb-1">First Name</label>
               <input
                 type="text"
                 value={formData.firstName}
-                onChange={(e) =>
-                  setFormData({ ...formData, firstName: e.target.value })
-                }
-                className="w-full rounded-lg border-2 border-beige-dark bg-white px-4 py-3 text-royal placeholder-royal/40 focus:border-olive focus:outline-none"
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                className="w-full rounded-lg border-2 border-beige-dark px-3 py-2.5 text-royal focus:border-olive focus:outline-none"
                 placeholder="First name"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-royal mb-1">
-                Family Name
-              </label>
+              <label className="block text-sm font-medium text-royal mb-1">Family Name</label>
               <input
                 type="text"
                 value={formData.familyName}
-                onChange={(e) =>
-                  setFormData({ ...formData, familyName: e.target.value })
-                }
-                className="w-full rounded-lg border-2 border-beige-dark bg-white px-4 py-3 text-royal placeholder-royal/40 focus:border-olive focus:outline-none"
+                onChange={(e) => setFormData({ ...formData, familyName: e.target.value })}
+                className="w-full rounded-lg border-2 border-beige-dark px-3 py-2.5 text-royal focus:border-olive focus:outline-none"
                 placeholder="Family name"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-royal mb-1">
-              Email Address
-            </label>
+            <label className="block text-sm font-medium text-royal mb-1">Email</label>
             <input
               type="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              className="w-full rounded-lg border-2 border-beige-dark bg-white px-4 py-3 text-royal placeholder-royal/40 focus:border-olive focus:outline-none"
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full rounded-lg border-2 border-beige-dark px-3 py-2.5 text-royal focus:border-olive focus:outline-none"
               placeholder="your@email.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-royal mb-1">
-              Phone Number
-            </label>
+            <label className="block text-sm font-medium text-royal mb-1">Phone</label>
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
-              className="w-full rounded-lg border-2 border-beige-dark bg-white px-4 py-3 text-royal placeholder-royal/40 focus:border-olive focus:outline-none"
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="w-full rounded-lg border-2 border-beige-dark px-3 py-2.5 text-royal focus:border-olive focus:outline-none"
               placeholder="(555) 123-4567"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-royal mb-1">
-              State of Residence
-            </label>
+            <label className="block text-sm font-medium text-royal mb-1">State</label>
             <select
               value={formData.state}
-              onChange={(e) =>
-                setFormData({ ...formData, state: e.target.value })
-              }
-              className="w-full rounded-lg border-2 border-beige-dark bg-white px-4 py-3 text-royal focus:border-olive focus:outline-none"
+              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+              className="w-full rounded-lg border-2 border-beige-dark px-3 py-2.5 text-royal focus:border-olive focus:outline-none"
             >
               <option value="">Select state...</option>
               {US_STATES.map((state) => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
+                <option key={state} value={state}>{state}</option>
               ))}
             </select>
           </div>
@@ -289,251 +221,233 @@ export default function MultiStepRegistration() {
           {earlyAccessRequired && (
             <div>
               <label className="block text-sm font-medium text-royal mb-1">
-                Early Access Code <span className="text-olive">(Required)</span>
+                Access Code <span className="text-olive">(Required)</span>
               </label>
               <input
                 type="text"
                 value={formData.accessCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, accessCode: e.target.value })
-                }
-                className="w-full rounded-lg border-2 border-beige-dark bg-white px-4 py-3 text-royal placeholder-royal/40 focus:border-olive focus:outline-none"
-                placeholder="Enter your access code"
+                onChange={(e) => setFormData({ ...formData, accessCode: e.target.value })}
+                className="w-full rounded-lg border-2 border-beige-dark px-3 py-2.5 text-royal focus:border-olive focus:outline-none"
+                placeholder="Enter access code"
               />
-              <p className="mt-1 text-xs text-royal/60">
-                Members-only registration. Public opens January 18, 2026.
-              </p>
+              <p className="mt-1 text-xs text-royal/60">Members-only. Public opens Jan 18.</p>
             </div>
           )}
         </div>
       )}
 
-      {/* Step 2: Products & Add-ons */}
+      {/* Step 2: Registration & Add-ons */}
       {step === 2 && (
-        <div className="space-y-6">
-          <PricingTimeline />
-
+        <div className="space-y-4">
           {/* Base Registration */}
           <div className="rounded-xl border-2 border-olive bg-olive/5 p-4">
-            <div className="flex justify-between items-start">
-              <div>
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-royal">Family Registration</h4>
-                <p className="text-sm text-royal/70 mt-1">
-                  Includes access for your entire family to all sessions
+                <p className="text-xs text-royal/70 mt-1">
+                  Full family access + 1 dinner + 1 lunch + 1 t-shirt
                 </p>
-                <ul className="text-xs text-royal/60 mt-2 space-y-1">
-                  <li>• 1 Dinner ticket (July 10th)</li>
-                  <li>• 1 Boxed lunch (July 11th)</li>
-                  <li>• 1 Conference t-shirt</li>
-                </ul>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-bold text-olive">
-                  {formatPrice(conferencePrice.amount)}
-                </p>
+              <div className="text-right shrink-0">
+                <p className="text-lg font-bold text-olive">{formatPrice(conferencePrice.amount)}</p>
                 <span className="text-xs text-olive">{conferencePrice.label}</span>
+              </div>
+            </div>
+
+            {/* Included T-shirt */}
+            <div className="mt-3 pt-3 border-t border-olive/20">
+              <p className="text-xs font-medium text-royal mb-2">Your included t-shirt:</p>
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {T_SHIRT_SIZES.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => updateTShirt(0, "size", size)}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                        formData.tshirts[0]?.size === size
+                          ? "bg-olive text-white"
+                          : "bg-beige-dark/50 text-royal hover:bg-beige-dark"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {T_SHIRT_COLORS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => updateTShirt(0, "color", c.id)}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                        formData.tshirts[0]?.color === c.id
+                          ? "bg-olive text-white"
+                          : "bg-beige-dark/50 text-royal hover:bg-beige-dark"
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Add-ons */}
           <div>
-            <h4 className="font-semibold text-royal mb-3">
-              Optional Add-ons
-              <span className="font-normal text-sm text-royal/60 ml-2">
-                (can also purchase later)
-              </span>
-            </h4>
+            <h4 className="font-semibold text-royal mb-2">Optional Add-ons</h4>
             <div className="space-y-3">
-              {ADD_ONS.map((addon) => (
-                <div
-                  key={addon.id}
-                  className="flex items-center justify-between rounded-lg border border-beige-dark p-3"
-                >
-                  <div>
-                    <p className="font-medium text-royal text-sm">{addon.name}</p>
-                    <p className="text-xs text-royal/60">{addon.description}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-olive">
-                      {formatPrice(addon.price)}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => updateAddOn(addon.id, -1)}
-                        className="w-8 h-8 rounded-full border border-beige-dark text-royal hover:bg-beige-dark transition-colors flex items-center justify-center"
-                      >
-                        −
-                      </button>
-                      <span className="w-6 text-center font-medium">
-                        {formData.addOns[addon.id] || 0}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateAddOn(addon.id, 1)}
-                        className="w-8 h-8 rounded-full border border-beige-dark text-royal hover:bg-beige-dark transition-colors flex items-center justify-center"
-                      >
-                        +
-                      </button>
+              {ADD_ONS.map((addon) => {
+                const qty = formData.addOns[addon.id] || 0;
+                return (
+                  <div key={addon.id} className="rounded-lg border border-beige-dark p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-royal text-sm">{addon.name}</p>
+                        <p className="text-xs text-royal/60">{addon.description}</p>
+                        <p className="text-sm font-semibold text-olive mt-1">{formatPrice(addon.price)}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => updateAddOn(addon.id, -1)}
+                          className="w-8 h-8 rounded-full border border-beige-dark flex items-center justify-center hover:bg-beige-dark"
+                        >
+                          −
+                        </button>
+                        <span className="w-6 text-center font-medium">{qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateAddOn(addon.id, 1)}
+                          className="w-8 h-8 rounded-full border border-beige-dark flex items-center justify-center hover:bg-beige-dark"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Extra T-shirts */}
+                    {addon.id === "tshirt" && qty > 0 && (
+                      <div className="mt-3 space-y-3 pt-3 border-t border-beige-dark">
+                        {formData.tshirts.slice(1).map((tshirt, idx) => (
+                          <div key={idx} className="space-y-2">
+                            <p className="text-xs font-medium text-royal">T-shirt #{idx + 2}:</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {T_SHIRT_SIZES.map((size) => (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => updateTShirt(idx + 1, "size", size)}
+                                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                                    tshirt.size === size
+                                      ? "bg-olive text-white"
+                                      : "bg-beige-dark/50 text-royal hover:bg-beige-dark"
+                                  }`}
+                                >
+                                  {size}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {T_SHIRT_COLORS.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => updateTShirt(idx + 1, "color", c.id)}
+                                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                                    tshirt.color === c.id
+                                      ? "bg-olive text-white"
+                                      : "bg-beige-dark/50 text-royal hover:bg-beige-dark"
+                                  }`}
+                                >
+                                  {c.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Running Total */}
+          {/* Total */}
           <div className="rounded-lg bg-royal/5 p-4">
             <div className="flex justify-between items-center">
               <span className="font-medium text-royal">Total</span>
-              <span className="text-2xl font-bold text-royal">
-                {formatPrice(total)}
-              </span>
+              <span className="text-xl font-bold text-royal">{formatPrice(total)}</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Step 3: T-Shirt Details */}
+      {/* Step 3: Dietary */}
       {step === 3 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-royal mb-4">
-            T-Shirt Selection ({tshirtCount} {tshirtCount === 1 ? "shirt" : "shirts"})
-          </h3>
-
-          {formData.tshirts.map((tshirt, index) => (
-            <div
-              key={index}
-              className="rounded-lg border border-beige-dark p-4"
-            >
-              <p className="text-sm font-medium text-royal mb-3">
-                {index === 0 ? "Included T-Shirt" : `Extra T-Shirt #${index}`}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-royal/60 mb-1">Size</label>
-                  <select
-                    value={tshirt.size}
-                    onChange={(e) => updateTShirt(index, "size", e.target.value)}
-                    className="w-full rounded-lg border border-beige-dark bg-white px-3 py-2 text-sm text-royal focus:border-olive focus:outline-none"
-                  >
-                    {T_SHIRT_SIZES.map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-royal/60 mb-1">Color</label>
-                  <select
-                    value={tshirt.color}
-                    onChange={(e) => updateTShirt(index, "color", e.target.value)}
-                    className="w-full rounded-lg border border-beige-dark bg-white px-3 py-2 text-sm text-royal focus:border-olive focus:outline-none"
-                  >
-                    {T_SHIRT_COLORS.map((color) => (
-                      <option key={color.id} value={color.id}>
-                        {color.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Step 4: Dietary Preferences */}
-      {step === 4 && (
-        <div className="space-y-6">
-          <h3 className="text-lg font-semibold text-royal mb-4">
-            Dietary Preferences
-          </h3>
-
           <div>
-            <label className="block text-sm font-medium text-royal mb-3">
-              Protein Preference
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {DIETARY_OPTIONS.map((option) => (
+            <label className="block text-sm font-medium text-royal mb-2">Protein Preference</label>
+            <div className="grid grid-cols-3 gap-2">
+              {DIETARY_OPTIONS.map((opt) => (
                 <label
-                  key={option.id}
-                  className={`flex items-center justify-center rounded-lg border-2 p-3 cursor-pointer transition-colors ${
-                    formData.dietaryPreference === option.id
-                      ? "border-olive bg-olive/5"
-                      : "border-beige-dark hover:border-olive/50"
+                  key={opt.id}
+                  className={`flex items-center justify-center rounded-lg border-2 p-3 cursor-pointer text-sm font-medium ${
+                    formData.dietaryPreference === opt.id
+                      ? "border-olive bg-olive/5 text-olive"
+                      : "border-beige-dark text-royal hover:border-olive/50"
                   }`}
                 >
                   <input
                     type="radio"
                     name="dietary"
-                    value={option.id}
-                    checked={formData.dietaryPreference === option.id}
+                    value={opt.id}
+                    checked={formData.dietaryPreference === opt.id}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        dietaryPreference: e.target.value as typeof formData.dietaryPreference,
-                      })
+                      setFormData({ ...formData, dietaryPreference: e.target.value as typeof formData.dietaryPreference })
                     }
                     className="sr-only"
                   />
-                  <span
-                    className={`text-sm font-medium ${
-                      formData.dietaryPreference === option.id
-                        ? "text-olive"
-                        : "text-royal"
-                    }`}
-                  >
-                    {option.label}
-                  </span>
+                  {opt.label}
                 </label>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-royal mb-1">
-              Allergies or Dietary Restrictions
-            </label>
+            <label className="block text-sm font-medium text-royal mb-1">Allergies / Restrictions</label>
             <textarea
               value={formData.allergies}
-              onChange={(e) =>
-                setFormData({ ...formData, allergies: e.target.value })
-              }
-              className="w-full rounded-lg border-2 border-beige-dark bg-white px-4 py-3 text-royal placeholder-royal/40 focus:border-olive focus:outline-none"
+              onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+              className="w-full rounded-lg border-2 border-beige-dark px-3 py-2.5 text-royal focus:border-olive focus:outline-none"
               rows={3}
-              placeholder="Please list any allergies or restrictions for catering..."
+              placeholder="List any allergies for catering..."
             />
           </div>
 
-          {/* Final Total */}
           <div className="rounded-lg bg-olive/10 p-4">
             <div className="flex justify-between items-center">
               <span className="font-semibold text-royal">Total Due</span>
-              <span className="text-2xl font-bold text-olive">
-                {formatPrice(total)}
-              </span>
+              <span className="text-xl font-bold text-olive">{formatPrice(total)}</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Error Message */}
+      {/* Error */}
       {error && (
-        <div className="mt-4 rounded-lg bg-red-50 p-4 text-red-700 text-sm">
-          {error}
-        </div>
+        <div className="mt-4 rounded-lg bg-red-50 p-3 text-red-700 text-sm">{error}</div>
       )}
 
-      {/* Navigation Buttons */}
-      <div className="mt-8 flex gap-3">
+      {/* Navigation */}
+      <div className="mt-6 flex gap-3">
         {step > 1 && (
           <button
             type="button"
             onClick={prevStep}
-            className="flex-1 rounded-lg border-2 border-royal/20 px-6 py-3 font-semibold text-royal hover:border-royal/40 transition-colors"
+            className="flex-1 rounded-lg border-2 border-royal/20 px-4 py-3 font-semibold text-royal hover:border-royal/40"
           >
             Back
           </button>
@@ -543,7 +457,7 @@ export default function MultiStepRegistration() {
             type="button"
             onClick={nextStep}
             disabled={!canProceed()}
-            className="flex-1 rounded-lg bg-royal px-6 py-3 font-semibold text-beige hover:bg-royal-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 rounded-lg bg-royal px-4 py-3 font-semibold text-beige hover:bg-royal-light disabled:opacity-50"
           >
             Continue
           </button>
@@ -552,31 +466,9 @@ export default function MultiStepRegistration() {
             type="button"
             onClick={handleSubmit}
             disabled={loading || !canProceed()}
-            className="flex-1 rounded-lg bg-olive px-6 py-3 font-semibold text-white hover:bg-olive-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 rounded-lg bg-olive px-4 py-3 font-semibold text-white hover:bg-olive-light disabled:opacity-50"
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Processing...
-              </span>
-            ) : (
-              "Proceed to Payment"
-            )}
+            {loading ? "Processing..." : "Proceed to Payment"}
           </button>
         )}
       </div>
