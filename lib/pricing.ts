@@ -1,6 +1,6 @@
 // Pricing configuration - update these values with your Stripe price IDs and dates
 
-export type RegistrationType = "conference" | "vendor";
+export type RegistrationType = "conference" | "vendor-full" | "vendor-half";
 
 interface PricingWindow {
   priceId: string;
@@ -16,7 +16,12 @@ interface PricingConfig {
     late: PricingWindow;
   };
   vendor: {
-    standard: {
+    full: {
+      priceId: string;
+      label: string;
+      amount: number;
+    };
+    half: {
       priceId: string;
       label: string;
       amount: number;
@@ -47,10 +52,15 @@ export const PRICING: PricingConfig = {
     },
   },
   vendor: {
-    standard: {
-      priceId: process.env.STRIPE_PRICE_VENDOR || "price_vendor_xxx",
-      label: "Vendor Table",
-      amount: 10000, // $100.00 - update with actual price
+    full: {
+      priceId: process.env.STRIPE_PRICE_VENDOR_FULL || "price_vendor_full_xxx",
+      label: "Full Table",
+      amount: 5000, // $50.00
+    },
+    half: {
+      priceId: process.env.STRIPE_PRICE_VENDOR_HALF || "price_vendor_half_xxx",
+      label: "Half Table",
+      amount: 2500, // $25.00
     },
   },
 };
@@ -69,8 +79,12 @@ export function getCurrentConferencePrice(): PricingWindow {
   return PRICING.conference.late;
 }
 
-export function getVendorPrice() {
-  return PRICING.vendor.standard;
+export function getVendorFullPrice() {
+  return PRICING.vendor.full;
+}
+
+export function getVendorHalfPrice() {
+  return PRICING.vendor.half;
 }
 
 export function formatPrice(cents: number): string {
@@ -81,8 +95,11 @@ export function formatPrice(cents: number): string {
 }
 
 export function getPriceId(type: RegistrationType): string {
-  if (type === "vendor") {
-    return getVendorPrice().priceId;
+  if (type === "vendor-full") {
+    return getVendorFullPrice().priceId;
+  }
+  if (type === "vendor-half") {
+    return getVendorHalfPrice().priceId;
   }
   return getCurrentConferencePrice().priceId;
 }

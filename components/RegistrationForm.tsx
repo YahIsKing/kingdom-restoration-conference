@@ -3,7 +3,8 @@
 import { useState } from "react";
 import {
   getCurrentConferencePrice,
-  getVendorPrice,
+  getVendorFullPrice,
+  getVendorHalfPrice,
   formatPrice,
   RegistrationType,
 } from "@/lib/pricing";
@@ -17,7 +18,8 @@ export default function RegistrationForm() {
   const [error, setError] = useState("");
 
   const conferencePrice = getCurrentConferencePrice();
-  const vendorPrice = getVendorPrice();
+  const vendorFullPrice = getVendorFullPrice();
+  const vendorHalfPrice = getVendorHalfPrice();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +39,6 @@ export default function RegistrationForm() {
         throw new Error(data.error || "Failed to create checkout session");
       }
 
-      // Redirect to Stripe Checkout
       if (data.url) {
         window.location.href = data.url;
       }
@@ -47,6 +48,18 @@ export default function RegistrationForm() {
     }
   };
 
+  const CheckIcon = () => (
+    <div className="absolute right-4 top-4 text-olive">
+      <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          fillRule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </div>
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Registration Type Selection */}
@@ -54,8 +67,8 @@ export default function RegistrationForm() {
         <label className="block text-lg font-semibold text-royal">
           Registration Type
         </label>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {/* Conference Registration Option */}
+        <div className="space-y-3">
+          {/* Conference Registration */}
           <label
             className={`relative flex cursor-pointer rounded-xl border-2 p-5 transition-all ${
               registrationType === "conference"
@@ -89,27 +102,13 @@ export default function RegistrationForm() {
                 </span>
               </div>
             </div>
-            {registrationType === "conference" && (
-              <div className="absolute right-4 top-4 text-olive">
-                <svg
-                  className="h-6 w-6"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-            )}
+            {registrationType === "conference" && <CheckIcon />}
           </label>
 
-          {/* Vendor Table Option */}
+          {/* Vendor Full Table */}
           <label
             className={`relative flex cursor-pointer rounded-xl border-2 p-5 transition-all ${
-              registrationType === "vendor"
+              registrationType === "vendor-full"
                 ? "border-olive bg-olive/5"
                 : "border-beige-dark hover:border-olive/50"
             }`}
@@ -117,8 +116,8 @@ export default function RegistrationForm() {
             <input
               type="radio"
               name="registrationType"
-              value="vendor"
-              checked={registrationType === "vendor"}
+              value="vendor-full"
+              checked={registrationType === "vendor-full"}
               onChange={(e) =>
                 setRegistrationType(e.target.value as RegistrationType)
               }
@@ -126,32 +125,52 @@ export default function RegistrationForm() {
             />
             <div className="flex-1">
               <span className="block text-lg font-semibold text-royal">
-                Vendor Table
+                Vendor Table – Full
               </span>
               <span className="mt-1 block text-sm text-royal/70">
-                Table space in vendor area
+                Full table in vendor area
               </span>
               <div className="mt-3">
                 <span className="text-2xl font-bold text-olive">
-                  {formatPrice(vendorPrice.amount)}
+                  {formatPrice(vendorFullPrice.amount)}
                 </span>
               </div>
             </div>
-            {registrationType === "vendor" && (
-              <div className="absolute right-4 top-4 text-olive">
-                <svg
-                  className="h-6 w-6"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+            {registrationType === "vendor-full" && <CheckIcon />}
+          </label>
+
+          {/* Vendor Half Table */}
+          <label
+            className={`relative flex cursor-pointer rounded-xl border-2 p-5 transition-all ${
+              registrationType === "vendor-half"
+                ? "border-olive bg-olive/5"
+                : "border-beige-dark hover:border-olive/50"
+            }`}
+          >
+            <input
+              type="radio"
+              name="registrationType"
+              value="vendor-half"
+              checked={registrationType === "vendor-half"}
+              onChange={(e) =>
+                setRegistrationType(e.target.value as RegistrationType)
+              }
+              className="sr-only"
+            />
+            <div className="flex-1">
+              <span className="block text-lg font-semibold text-royal">
+                Vendor Table – Half
+              </span>
+              <span className="mt-1 block text-sm text-royal/70">
+                Half table in vendor area
+              </span>
+              <div className="mt-3">
+                <span className="text-2xl font-bold text-olive">
+                  {formatPrice(vendorHalfPrice.amount)}
+                </span>
               </div>
-            )}
+            </div>
+            {registrationType === "vendor-half" && <CheckIcon />}
           </label>
         </div>
       </div>
