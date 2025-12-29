@@ -1,35 +1,16 @@
-import { kv } from "@vercel/kv";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
 
-const SPOTS_KEY = "spots_remaining";
-const TOTAL_SPOTS = 200;
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function getSpotsRemaining(): Promise<number> {
-  try {
-    const spots = await kv.get<number>(SPOTS_KEY);
-    // If not set yet, initialize to total spots
-    if (spots === null) {
-      await kv.set(SPOTS_KEY, TOTAL_SPOTS);
-      return TOTAL_SPOTS;
-    }
-    return spots;
-  } catch (error) {
-    console.error("Error getting spots:", error);
-    // Fallback if KV is not configured
-    return TOTAL_SPOTS;
-  }
+  return await convex.query(api.spots.get);
 }
 
 export async function decrementSpots(): Promise<number> {
-  try {
-    const newCount = await kv.decr(SPOTS_KEY);
-    return Math.max(0, newCount);
-  } catch (error) {
-    console.error("Error decrementing spots:", error);
-    return -1;
-  }
+  return await convex.mutation(api.spots.decrement);
 }
 
-// Admin function to reset or set spots (useful for testing)
-export async function setSpots(count: number): Promise<void> {
-  await kv.set(SPOTS_KEY, count);
+export async function setSpots(count: number): Promise<number> {
+  return await convex.mutation(api.spots.set, { value: count });
 }

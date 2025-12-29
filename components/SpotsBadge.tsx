@@ -1,25 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export default function SpotsBadge() {
-  const [spots, setSpots] = useState<number | null>(null);
+  const spots = useQuery(api.spots.get);
 
-  useEffect(() => {
-    async function fetchSpots() {
-      try {
-        const res = await fetch("/api/spots");
-        const data = await res.json();
-        setSpots(data.spots);
-      } catch (error) {
-        console.error("Failed to fetch spots:", error);
-        setSpots(200); // Fallback
-      }
-    }
-    fetchSpots();
-  }, []);
-
-  if (spots === null) {
+  if (spots === undefined) {
     return (
       <div className="inline-flex items-center gap-2 rounded-full bg-olive/10 px-4 py-2 text-sm font-medium text-olive">
         <span className="relative flex h-2 w-2">
