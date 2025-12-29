@@ -1,11 +1,10 @@
-// Pricing configuration - update these values with your Stripe price IDs and dates
+// Pricing configuration - just update these values to change prices
 
 export type RegistrationType = "conference" | "vendor-full" | "vendor-half";
 
 interface PricingWindow {
-  priceId: string;
   label: string;
-  amount: number; // in cents for display purposes
+  amount: number; // in cents (e.g., 15000 = $150.00)
   deadline: Date;
 }
 
@@ -17,48 +16,49 @@ interface PricingConfig {
   };
   vendor: {
     full: {
-      priceId: string;
       label: string;
       amount: number;
     };
     half: {
-      priceId: string;
       label: string;
       amount: number;
     };
   };
 }
 
-// TODO: Update with actual Stripe price IDs and amounts
+// ============================================================
+// UPDATE PRICES HERE - no Stripe Dashboard changes needed!
+// ============================================================
+// Timeline:
+//   Launch:     ~Jan 4, 2026
+//   Early Bird: Jan 18 - Feb 1, 2026
+//   Regular:    Feb 1 - May 24, 2026
+//   Late:       May 24 - July 9, 2026 (conference)
+// ============================================================
 export const PRICING: PricingConfig = {
   conference: {
     earlyBird: {
-      priceId: process.env.STRIPE_PRICE_EARLY_BIRD || "price_earlybird_xxx",
       label: "Early Bird",
-      amount: 15000, // $150.00 - update with actual price
-      deadline: new Date("2026-03-01T00:00:00"),
+      amount: 15000, // $150.00 - UPDATE WITH ACTUAL PRICE
+      deadline: new Date("2026-02-01T00:00:00"), // Early bird ends Feb 1
     },
     regular: {
-      priceId: process.env.STRIPE_PRICE_REGULAR || "price_regular_xxx",
       label: "Regular",
-      amount: 20000, // $200.00 - update with actual price
-      deadline: new Date("2026-06-01T00:00:00"),
+      amount: 20000, // $200.00 - UPDATE WITH ACTUAL PRICE
+      deadline: new Date("2026-05-24T00:00:00"), // Regular ends May 24
     },
     late: {
-      priceId: process.env.STRIPE_PRICE_LATE || "price_late_xxx",
       label: "Late Registration",
-      amount: 25000, // $250.00 - update with actual price
-      deadline: new Date("2026-07-09T00:00:00"),
+      amount: 25000, // $250.00 - UPDATE WITH ACTUAL PRICE
+      deadline: new Date("2026-07-09T00:00:00"), // Conference starts July 9
     },
   },
   vendor: {
     full: {
-      priceId: process.env.STRIPE_PRICE_VENDOR_FULL || "price_vendor_full_xxx",
       label: "Full Table",
       amount: 5000, // $50.00
     },
     half: {
-      priceId: process.env.STRIPE_PRICE_VENDOR_HALF || "price_vendor_half_xxx",
       label: "Half Table",
       amount: 2500, // $25.00
     },
@@ -92,14 +92,4 @@ export function formatPrice(cents: number): string {
     style: "currency",
     currency: "USD",
   }).format(cents / 100);
-}
-
-export function getPriceId(type: RegistrationType): string {
-  if (type === "vendor-full") {
-    return getVendorFullPrice().priceId;
-  }
-  if (type === "vendor-half") {
-    return getVendorHalfPrice().priceId;
-  }
-  return getCurrentConferencePrice().priceId;
 }

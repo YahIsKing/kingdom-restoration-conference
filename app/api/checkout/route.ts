@@ -1,6 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { getPriceId, RegistrationType } from "@/lib/pricing";
+import {
+  RegistrationType,
+  getCurrentConferencePrice,
+  getVendorFullPrice,
+  getVendorHalfPrice,
+} from "@/lib/pricing";
+
+function getPriceData(registrationType: RegistrationType) {
+  if (registrationType === "vendor-full") {
+    const price = getVendorFullPrice();
+    return {
+      name: "Vendor Table – Full",
+      description: "Full table in vendor area - KRC 2026",
+      amount: price.amount,
+    };
+  }
+  if (registrationType === "vendor-half") {
+    const price = getVendorHalfPrice();
+    return {
+      name: "Vendor Table – Half",
+      description: "Half table in vendor area - KRC 2026",
+      amount: price.amount,
+    };
+  }
+  const price = getCurrentConferencePrice();
+  return {
+    name: `Kingdom Restoration Conference 2026 (${price.label})`,
+    description: "July 9-12, 2026 - Hilton Knoxville Airport",
+    amount: price.amount,
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,14 +48,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["conference", "vendor"].includes(registrationType)) {
+    if (!["conference", "vendor-full", "vendor-half"].includes(registrationType)) {
       return NextResponse.json(
         { error: "Invalid registration type" },
         { status: 400 }
       );
     }
 
-    const priceId = getPriceId(registrationType);
+    const priceData = getPriceData(registrationType);
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
     const stripe = getStripe();
@@ -33,7 +63,14 @@ export async function POST(request: NextRequest) {
       payment_method_types: ["card"],
       line_items: [
         {
-          price: priceId,
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: priceData.name,
+              description: priceData.description,
+            },
+            unit_amount: priceData.amount,
+          },
           quantity: 1,
         },
       ],
