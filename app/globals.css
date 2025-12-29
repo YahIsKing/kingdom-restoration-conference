@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-royal: #2C3E50;
+  --color-royal-light: #3D5166;
+  --color-olive: #78866B;
+  --color-olive-light: #8A9A7D;
+  --color-beige: #E6D5B7;
+  --color-beige-light: #F5EFE6;
+  --color-beige-dark: #D4C4A8;
+}
+
+body {
+  background-color: var(--color-beige-light);
+  color: var(--color-royal);
+}
+
+/* Apply fonts using Next.js CSS variables */
+.font-heading {
+  font-family: var(--font-map-roman), Georgia, serif;
+}
+
+.font-body {
+  font-family: var(--font-museo), system-ui, sans-serif;
+}
+
+/* Default body font */
+body {
+  font-family: var(--font-museo), system-ui, sans-serif;
+}
+
+/* Headings get the heading font */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-map-roman), Georgia, serif;
+}
