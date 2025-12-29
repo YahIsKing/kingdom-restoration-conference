@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "KRC2026Admin";
-
 interface Registration {
   id: string;
   created: number;
@@ -40,37 +38,41 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      setAuthenticated(true);
-      setError("");
-    } else {
-      setError("Invalid password");
-    }
-  };
-
-  const fetchData = async () => {
+  const fetchData = async (pwd: string) => {
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/admin/registrations", {
-        headers: { "x-admin-password": password },
+        headers: { "x-admin-password": pwd },
       });
+      if (res.status === 401) {
+        setAuthenticated(false);
+        setError("Invalid password");
+        setLoading(false);
+        return false;
+      }
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setRegistrations(data.registrations);
       setStats(data.stats);
-    } catch (err) {
+      setAuthenticated(true);
+      setLoading(false);
+      return true;
+    } catch {
       setError("Failed to load registrations");
+      setLoading(false);
+      return false;
     }
-    setLoading(false);
   };
 
-  useEffect(() => {
-    if (authenticated) {
-      fetchData();
-    }
-  }, [authenticated]);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await fetchData(password);
+  };
+
+  const handleRefresh = () => {
+    fetchData(password);
+  };
 
   const formatPrice = (cents: number) => {
     return `$${(cents / 100).toFixed(2)}`;
@@ -191,7 +193,7 @@ export default function AdminPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={fetchData}
+              onClick={handleRefresh}
               disabled={loading}
               className="bg-beige-dark text-royal px-4 py-2 rounded-lg font-medium hover:bg-beige-dark/80 text-sm"
             >
