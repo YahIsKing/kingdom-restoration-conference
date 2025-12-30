@@ -60,11 +60,31 @@ export async function POST(request: NextRequest) {
     // Send confirmation email
     if (customerEmail) {
       try {
+        // Parse order details from metadata
+        let tshirts: { size: string; color: string }[] = [];
+        let addOns: Record<string, number> = {};
+
+        try {
+          tshirts = JSON.parse(session.metadata?.tshirts || "[]");
+        } catch {
+          // ignore parse error
+        }
+
+        try {
+          addOns = JSON.parse(session.metadata?.addOns || "{}");
+        } catch {
+          // ignore parse error
+        }
+
         await sendConfirmationEmail({
           to: customerEmail,
           name: customerName,
           registrationType: registrationType.startsWith("vendor") ? "vendor" : "conference",
           amount: amountPaid,
+          tshirts,
+          addOns,
+          dietaryPreference: session.metadata?.dietaryPreference || "",
+          allergies: session.metadata?.allergies || "",
         });
         console.log(`Confirmation email sent to ${customerEmail}`);
       } catch (emailError) {

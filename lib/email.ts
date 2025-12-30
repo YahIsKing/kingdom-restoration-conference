@@ -8,11 +8,70 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
+interface TShirt {
+  size: string;
+  color: string;
+}
+
 interface ConfirmationEmailData {
   to: string;
   name: string;
   registrationType: "conference" | "vendor";
   amount: string;
+  // Optional detailed order info
+  tshirts?: TShirt[];
+  addOns?: Record<string, number>;
+  dietaryPreference?: string;
+  allergies?: string;
+}
+
+function formatColorLabel(color: string): string {
+  const colors: Record<string, string> = {
+    royal: "Royal (Navy)",
+    olive: "Olive (Green)",
+    beige: "Beige (Sand)",
+  };
+  return colors[color] || color;
+}
+
+function buildOrderDetailsHtml(data: ConfirmationEmailData): string {
+  const items: string[] = [];
+
+  // Base registration
+  items.push(`<li>Family Registration - includes 1 dinner, 1 lunch, 1 t-shirt</li>`);
+
+  // T-shirts
+  if (data.tshirts && data.tshirts.length > 0) {
+    const tshirtList = data.tshirts
+      .map((t, i) => `${t.size} - ${formatColorLabel(t.color)}${i === 0 ? " (included)" : ""}`)
+      .join("<br>&nbsp;&nbsp;&nbsp;&nbsp;");
+    items.push(`<li><strong>T-Shirts:</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;${tshirtList}</li>`);
+  }
+
+  // Add-ons
+  if (data.addOns) {
+    if (data.addOns["dinner-adult"]) {
+      items.push(`<li>Extra Adult Dinner x${data.addOns["dinner-adult"]}</li>`);
+    }
+    if (data.addOns["dinner-child"]) {
+      items.push(`<li>Extra Child Dinner x${data.addOns["dinner-child"]}</li>`);
+    }
+    if (data.addOns["lunch"]) {
+      items.push(`<li>Extra Boxed Lunch x${data.addOns["lunch"]}</li>`);
+    }
+  }
+
+  // Dietary
+  if (data.dietaryPreference) {
+    const pref = data.dietaryPreference.charAt(0).toUpperCase() + data.dietaryPreference.slice(1);
+    items.push(`<li><strong>Dietary Preference:</strong> ${pref}</li>`);
+  }
+
+  if (data.allergies) {
+    items.push(`<li><strong>Allergies/Restrictions:</strong> ${data.allergies}</li>`);
+  }
+
+  return items.join("\n                ");
 }
 
 export async function sendConfirmationEmail(data: ConfirmationEmailData) {
@@ -22,6 +81,7 @@ export async function sendConfirmationEmail(data: ConfirmationEmailData) {
   }
 
   const isVendor = data.registrationType === "vendor";
+  const orderDetailsHtml = !isVendor ? buildOrderDetailsHtml(data) : "";
 
   const { error } = await resend.emails.send({
     from: "Kingdom Restoration Conference <noreply@updates.kingdomrestorationconf.com>",
@@ -61,6 +121,15 @@ export async function sendConfirmationEmail(data: ConfirmationEmailData) {
                 <p style="margin: 5px 0; color: #333;"><strong>Location:</strong> Hilton Knoxville Airport, Alcoa, TN</p>
                 <p style="margin: 5px 0; color: #333;"><strong>Amount Paid:</strong> ${data.amount}</p>
               </div>
+
+              ${!isVendor ? `
+              <div style="background-color: #F5EFE6; border-left: 4px solid #2C3E50; padding: 20px; margin: 30px 0;">
+                <h3 style="color: #2C3E50; margin-top: 0;">Your Order</h3>
+                <ul style="color: #333; line-height: 1.8; margin: 0; padding-left: 20px;">
+                ${orderDetailsHtml}
+                </ul>
+              </div>
+              ` : ""}
 
               <h3 style="color: #2C3E50;">Hotel Accommodations</h3>
               <p style="color: #333; line-height: 1.6;">
