@@ -3,7 +3,7 @@
 export type RegistrationType = "conference" | "vendor-full" | "vendor-half";
 
 // Early access codes for members-only period (before public early bird)
-const EARLY_ACCESS_CODES = ["PwP2026!", "MAXPOTENTIA26!"];
+const EARLY_ACCESS_CODES = ["cl", "MAXPOTENTIA26!"];
 
 // Public registration opens Jan 18, 2026
 // Before this date, an access code is required

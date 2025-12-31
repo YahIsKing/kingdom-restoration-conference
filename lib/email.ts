@@ -84,7 +84,7 @@ export async function sendConfirmationEmail(data: ConfirmationEmailData) {
   const orderDetailsHtml = !isVendor ? buildOrderDetailsHtml(data) : "";
 
   const { error } = await resend.emails.send({
-    from: "Kingdom Restoration Conference <noreply@updates.kingdomrestorationconf.com>",
+    from: "Kingdom Restoration Conference <hello@updates.kingdomrestorationconf.com>",
     to: data.to,
     subject: isVendor
       ? "Vendor Table Confirmed - Kingdom Restoration Conference 2026"
