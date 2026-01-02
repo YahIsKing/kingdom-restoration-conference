@@ -4,9 +4,9 @@ import SpotsBadge from "@/components/SpotsBadge";
 import PricingTimeline from "@/components/PricingTimeline";
 
 const SPEAKERS = [
-  { name: "Abrie Kilian", role: "Keynote Speaker", image: null },
+  { name: "Peter G Rambo", role: "Keynote Speaker", image: "/peter.jpeg" },
+  { name: "Abrie Kilian", role: "Keynote Speaker", image: "/abrie-k.jpg" },
   { name: "Rochagne Kilian", role: "Keynote Speaker", image: null },
-  { name: "Peter G Rambo", role: "Keynote Speaker", image: null },
   { name: "Jonathan Bennett", role: "Speaker", image: null },
 ];
 
@@ -89,7 +89,7 @@ export default function Home() {
 
       {/* About */}
       <section className="py-20 sm:py-28 px-6">
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="max-w-4xl mx-auto text-center">
           <h2 className="font-heading text-3xl sm:text-4xl text-royal mb-8">
             Our Vision
           </h2>
@@ -179,8 +179,15 @@ export default function Home() {
       </section>
 
       {/* Venue */}
-      <section className="py-20 sm:py-28 px-6 bg-royal text-beige">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="relative py-20 sm:py-28 px-6 text-beige overflow-hidden">
+        <Image
+          src="/hilton-1.jpg"
+          alt=""
+          fill
+          className="object-cover scale-[1.15] object-[center]"
+        />
+        <div className="absolute inset-0 bg-royal/90" />
+        <div className="relative max-w-4xl mx-auto text-center">
           <h2 className="font-heading text-3xl sm:text-4xl mb-8">
             Venue
           </h2>
